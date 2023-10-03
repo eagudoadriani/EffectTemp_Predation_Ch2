@@ -1,0 +1,741 @@
+---
+title: "Ch2_DataAnalysis"
+author: "Esteban Agudo"
+date: "2023-08-21"
+output: html_document
+---
+#TEMPERATURE EFFECT ON PREDATION IN THE GALAPAGOS
+
+In this study we measured the role of temperature on moderating predation in a system exposed to seasonal upwelling, The Galapagos.
+
+
+Packages
+```{r, warning=FALSE, message=FALSE}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library("rnaturalearth")
+library("rnaturalearthdata")
+library("sf")
+library("ggspatial")
+library(tidyverse)
+library(sf)
+library(wesanderson)
+library(gridExtra)
+library(ggpubr)
+```
+
+
+## Study Location Map Map
+
+Loading file
+```{r, warning=FALSE, message=FALSE}
+shp_islas <-  read_sf("ShapeIslas/islas.shp")
+Barcaza<-read.csv(file="Map.csv", header=T)
+
+pal <- wes_palette("Zissou1", 100, type = "continuous")
+```
+
+```{r, warning=FALSE, message=FALSE}
+#Select San Cristobal Area 
+SanCristobal<-data.frame(x=c(-89.70, -89.2, -89.2, -89.7), y= c(-0.65, -0.65, -0.98, -0.98))
+
+## Let's create a data frame with coordinates for arectangle for San Cristobal
+
+#Let's make galapagos map
+GalapagosMap<-ggplot(data = shp_islas)+ 
+  geom_sf(color=NA)+
+  #let's limit the map area
+  coord_sf(xlim = c(-92, -89), ylim = c(-1.5, 0.5), 
+           expand = FALSE)+
+  #let's add a north arrow
+  theme_bw()+ 
+  theme(axis.title.x=element_blank(),
+        axis.title.y=element_blank(), 
+        axis.text=element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid.major = 
+          element_line(colour = "white"),
+        panel.grid.minor = 
+          element_line(colour = "white"),
+          panel.border = element_rect(colour = "darkslategray", fill=NA, size=0.1))+
+ geom_polygon(data=SanCristobal, aes(x=x, y=y), color="red", alpha=0.2)
+
+#GalapagosMap
+
+
+LaBarcaza<-ggplot(data = shp_islas)+ 
+  geom_sf(color=NA)+
+  #let's limit the map area
+  coord_sf(xlim = c(-89.70, -89.2), ylim = c(-1, -0.6), 
+           expand = FALSE)+
+  geom_point(data=Barcaza, 
+             aes(x=Longitude, y=Latitude),
+             alpha = 0.8, size=1, hjust=0.5)+
+  geom_text(data=Barcaza, 
+             aes(x=Longitude, y=Latitude, label=Locality), color = "darkslategray", size = 3.5, hjust=1, vjust=-0.5)+
+  #scale_size(range = c(1,3))+
+  theme_bw()+ 
+  theme(axis.title.x=element_blank(),
+        axis.title.y=element_blank(),
+      axis.ticks = element_blank(),
+    panel.grid.major = element_line(colour = "white"), legend.position="none")
+
+
+Map_Barcaza<-
+LaBarcaza+annotation_custom(grob = ggplotGrob(GalapagosMap),
+                    xmin=-89.70, xmax=-89.49, ymin=-0.76, ymax=-0.60)
+
+
+#Figure 1: Study location 
+png("Figures/Fig1_Map.png", width=22, height=13, units="cm", res=300)
+print(Map_Barcaza)
+dev.off()
+```
+
+
+## Temperature variation in La Barcaza
+
+We are building a figure were we showed temperature variation in la Barcaza for one year
+
+```{r, warning=FALSE, message=FALSE}
+
+library(lubridate)
+Barcaza_Temp<-read.csv("TemperatureBarcaza.csv", header=TRUE)
+str(Barcaza_Temp)
+#we need to define Barcaza_Temp as a time factor
+
+Barcaza_Temp$DateTime<-as.POSIXct(Barcaza_Temp$time,
+                                   format = "%m/%d/%Y %H:%M") # to keep only the day 
+str(Barcaza_Temp)
+
+library(plyr)
+Barcaza_Temp$Temperature<-round_any(Barcaza_Temp$temp, 0.5)
+
+
+#another way to separete in case we want to separate day and time 
+#Barcaza_Temp<- Barcaza_Temp %>%
+#  separate(Barcaza_Temp, time, c("date", "time"), sep = " ")
+
+#daily_Barcaza_Temp<-Barcaza_Temp %>%
+ # group_by(day) %>%
+  #summarise(daily_temp=mean(temp))
+
+Temp_Barcaza<-
+  ggplot(Barcaza_Temp, aes(x=DateTime, y=Temperature, na.rm=TRUE))+
+  geom_jitter(size=0.5, na.rm=TRUE, height = 0.15, alpha=0.3)+ 
+  geom_smooth(method = "loess", se = FALSE, na.rm=TRUE, color="red3", size=2)+
+  theme_classic()+ 
+  theme(panel.background = element_blank())+
+  xlab("")+
+  ylab(expression("Temperature ("*~degree*C*")"))+
+  scale_y_continuous(limits = c(14, 32), breaks = seq(14, 32, 2))
+
+Temp_Barcaza
+
+#Figure 2: Temperature variation in la Barcaza
+png("Figures/Fig2_Temperature.png", width=22, height=13, units="cm", res=300)
+print(Temp_Barcaza)
+dev.off()
+```
+
+## Modeling the effect of temperature on predation and movement in the lab
+```{r, warning=FALSE, message=FALSE}
+lab_exp<- read.csv("LabPredation.csv", header=TRUE)
+head(lab_exp)
+
+#lets visualize data
+boxplot(lab_exp$BarnacleEatenPerDay~lab_exp$Treatment, las=1, ylab="Barnacle per day", xlab="Temperature Treatment", main="Barnacle eaten per Temperature")
+```
+
+### Model effect of temperature on lab predation rates
+
+```{r, warning=FALSE, message=FALSE}
+model_poisson<-glm(BarnacleEaten~Treatment+offset(log(DaysExperiment)), family=poisson(link="log"), data=lab_exp) # we use offset because Poisson model only can consider number without decimals
+summary(model_poisson)
+
+
+model_gamma<-glm((BarnacleEatenPerDay+0.001)~Treatment-1, family=Gamma(link="log"), data=lab_exp) # gamma model cannot consider 0
+summary(model_gamma)
+
+library(jtools)
+plot_summs(model_gamma, scale=TRUE, exp=TRUE) # Lets see effect with confidence intervals
+```
+The Gamma models seems to have a lower AIC so is the model we will be using 
+
+Interval confidence
+```{r, warning=FALSE, message=FALSE}
+# Estimating the confidence intervals and estimate for plotting 
+confint_gamma<-exp(confint(model_gamma, level = 0.95))
+
+coefficient_gamma<-as.data.frame(exp(model_gamma$coefficients))
+
+data_model<-cbind(coefficient_gamma, confint_gamma)
+colnames(data_model)<-c("Estimate", "upr", "lwr")
+rownames(data_model)<-c("16C", "21C", "26C", "28C")
+data_model$Treatment <- rownames(data_model)
+head(data_model)
+```
+Plotting model with interval confidence 
+
+```{r, warning=FALSE, message=FALSE}
+library(ggplot2)
+
+colour.palette <- c("#332288", "red3", "#E69F00", "#117733", "#56B4E9","#E69F00",  "#CC79A7", "#D55E00", "#0072B2", "#F0E442", "#CC6677")
+
+model_plot<-ggplot()+ 
+    geom_point(data=data_model, aes(x=Treatment, y=Estimate), shape="-", size = 20, position = position_dodge(width = 0.85))+
+    geom_errorbar(data=data_model, aes(x=Treatment, ymin=lwr, ymax=upr, colour=Treatment),  size = 8, width = 0, alpha = 0.6, position = position_dodge(width = 0.85), show.legend = FALSE)+
+    geom_jitter(data=lab_exp, aes(x=Treatment, y=BarnacleEatenPerDay, colour=Treatment), size=1.5, alpha=0.5, position = position_jitterdodge(jitter.width = 0.1, jitter.height = 0.02, dodge.width = 0.85))+
+    theme_classic()+
+    theme(panel.border = element_rect(colour = "black", fill=NA, size=0.7),
+        legend.position="none") +     
+  ylab("Predation rate (Banacle eaten per day)")+
+    xlab("Temperature treatment")+
+  scale_y_continuous(limits = c(-0.05, 0.85), breaks = seq(0, 85, 0.2))+
+    annotate("text",
+           x = 1,
+           y = 0.2,
+           label = "a",
+           family = "", fontface = 3, size=3)+
+     annotate("text",
+           x = 2,
+           y = 0.8,
+           label = "b",
+           family = "", fontface = 3, size=3)+
+   annotate("text",
+           x = 3,
+           y = 0.4,
+           label = "a,b",
+           family = "", fontface = 3, size=3)+
+   annotate("text",
+           x = 4,
+           y = 0.53,
+           label = "a,b",
+           family = "", fontface = 3, size=3)+
+  scale_colour_manual(values=colour.palette)
+
+model_plot
+```
+
+
+### Modelling effect of temperature on movement
+```{r, warning=FALSE, message=FALSE}
+lab_exp<- read.csv("LabPredation.csv", header=TRUE)
+head(lab_exp)
+str(lab_exp)
+#lets visualize data
+boxplot(lab_exp$MovementPerDay~lab_exp$Treatment, las=1, ylab="Barnacle per day", xlab="Temperature Treatment", main="Barnacle eaten per Temperature")
+```
+
+Modelling effect of temperature on movement
+```{r, warning=FALSE, message=FALSE}
+model_poisson_mov<-glm(Movement~Treatment+offset(log(DaysExperiment)), family=poisson(link="log"), data=lab_exp) # we use offset because Poisson model only can consider number without decimals
+summary(model_poisson)
+
+model_gamma_mov<-glm((MovementPerDay)~Treatment-1, family=Gamma(link="log"), data=lab_exp) # gamma model cannot consider 0
+summary(model_gamma_mov)
+
+plot_summs(model_gamma_mov, scale=TRUE, exp=TRUE) # Lets see effect with confidence intervals
+```
+
+```{r}
+confint_gamma<-exp(confint(model_gamma_mov, level = 0.95))
+
+coefficient_gamma<-as.data.frame(exp(model_gamma_mov$coefficients))
+
+data_model<-cbind(coefficient_gamma, confint_gamma)
+colnames(data_model)<-c("Estimate", "upr", "lwr")
+rownames(data_model)<-c("16C", "21C", "26C", "28C")
+data_model$Treatment <- rownames(data_model)
+head(data_model)
+
+```
+```{r}
+model_plot_mov<-ggplot()+ 
+    geom_point(data=data_model, aes(x=Treatment, y=Estimate), shape="-", size = 20, position = position_dodge(width = 0.85))+
+    geom_errorbar(data=data_model, aes(x=Treatment, ymin=lwr, ymax=upr, colour=Treatment),  size = 8, width = 0, alpha = 0.6, position = position_dodge(width = 0.85), show.legend = FALSE)+
+    geom_jitter(data=lab_exp, aes(x=Treatment, y=MovementPerDay, colour=Treatment), size=1.5, alpha=0.5, position = position_jitterdodge(jitter.width = 0.1, jitter.height = 0.02, dodge.width = 0.85))+
+    theme_classic()+
+    theme(panel.border = element_rect(colour = "black", fill=NA, size=0.7),
+        legend.position="none") +     
+  ylab("Movement (Position changes per day)")+
+    xlab("Temperature treatment")+
+  scale_y_continuous(limits = c(-0.05, 1.3), breaks=seq(0, 1.3, 0.2))+
+    annotate("text",
+           x = 1,
+           y = 0.4,
+           label = "a",
+           family = "", fontface = 3, size=3)+
+     annotate("text",
+           x = 2,
+           y = 1.14,
+           label = "b",
+           family = "", fontface = 3, size=3)+
+   annotate("text",
+           x = 3,
+           y = 1.14,
+           label = "b",
+           family = "", fontface = 3, size=3)+
+   annotate("text",
+           x = 4,
+           y = 1.11,
+           label = "b",
+           family = "", fontface = 3, size=3)+
+   scale_colour_manual(values=colour.palette)
+
+
+model_plot_mov
+```
+
+
+### Effect of temperature on movement and predation
+
+```{r}
+library(ggpubr)
+
+temp_movement_feeding<-ggarrange(model_plot_mov, model_plot,
+          labels = c("A", "B"),
+          ncol = 2)
+
+temp_movement_feeding
+
+#Figure 3: Effect of temperature on whelk movement and feeding rates  
+png("Figures/Fig2_TempertureMovementFeeding_Lab.png", width=22, height=15, units="cm", res=300)
+print(temp_movement_feeding)
+dev.off()
+```
+
+### Run bootstraping for lab experiment 
+I will try to run the code for bootstraping the data
+
+```{r, warning=FALSE, message=FALSE}
+set.seed(16)
+### Setup the bootstrap function and number of iterations
+# This is a bootstrap function that will sample WITH replacement (explained step by step within the function)
+bootFUN <- function(model, newdata) {
+  if(class(model)[1] == "negbin"){
+    nr <- nrow(model[["model"]]) # count number of rows in the model (# of observations)
+    data <- model[["model"]] # pull data from model
+  } else {
+    nr <- nrow(model$data) # count number of rows in the model (# of observations)
+    data <- model$data # pull data from model
+  }
+  data2 <- data.frame(data[sample(1:nr, replace = TRUE), ]) # random sample of numbers from 1 - nr (# of rows) to select data from
+  update <- update(model, data = data2) # rerun the model using the 'new' dataset from the random smapling above
+  predict(update, newdata, type = "response", level = 0.95) # predicts response variable with model and updated data 
+}
+
+bootnum <- 1000 #Number of boostraping 
+
+#The model we will use 
+
+model_gamma<-glm((BarnacleEatenPerDay+0.001)~Treatment-1, family=Gamma(link="log"), data=lab_exp) # gamma model cannot consider 0
+summary(model_gamma)
+
+#the data 
+newdata <- data.frame(Treatment = lab_exp$Treatment)
+
+boot <- replicate(bootnum, bootFUN(model = model_gamma, newdata = newdata)) # run the bootFUN the number (bootnum) of times specified and save as matrix
+
+#error 
+
+```
+
+
+
+## Effect of temperautre on whelk predation rates on the field 
+```{r}
+field_exp<- read.csv("FieldPredation_BarcazaExp.csv", header=TRUE)
+head(field_exp)
+
+#lets visualize data
+boxplot(field_exp$DailyPredation~field_exp$Treatment*field_exp$Temperature, las=1, ylab="Barnacle per day", xlab="Temperature Treatment", main="Barnacle eaten per Temperature")
+```
+### Modelling effect of temperature on Field predation rates
+
+```{r}
+#we need to make temperautre a factor
+
+field_exp$Temperature<-as.factor(field_exp$Temperature)
+
+#model_poisson<-glm(BarnacleEaten~Treatment+offset(log(DaysExperiment)), family=poisson(link="log"), data=lab_exp) # we use offset because Poisson model only can consider number without decimals
+#summary(model_poisson)
+
+model_gamma_field<-glm((DailyPredation+0.01)~Treatment:Temperature-1, family=Gamma(link="log"), data=field_exp) # we add 0.01 so we don't have zeros 
+summary(model_gamma_field)
+
+confint_gamma<-exp(confint(model_gamma_field, level = 0.95))
+
+
+plot_summs(model_gamma_field, scale=TRUE, exp=TRUE) # Lets see effect with confidence intervals
+```
+
+Lets calculate and determine the coefficients and confint for building the plot
+```{r, message=FALSE, warning=FALSE}
+confint_gamma<-exp(confint(model_gamma_field, level = 0.95))
+
+coefficient_gamma<-as.data.frame(exp(model_gamma_field$coefficients))
+
+data_model<-setNames(cbind(rownames(coefficient_gamma), coefficient_gamma, confint_gamma, row.names = NULL), 
+         c("COL1", "estimate", "upr", "lwr")) # set colnames
+
+# lets separate factors 
+data_model<- gsub("Treatment|Temperature", "", data_model$COL1)%>%      
+  str_split(":", simplify = TRUE)%>% 
+  as.data.frame() %>% cbind(data_model)  
+  
+#select only the columns we are interested in 
+data_model<-data_model %>%
+  select(V1, V2, estimate, upr, lwr)
+
+
+#lets assign names to the columns 
+  colnames(data_model)<-c("Predation", "Temperature", "Estimate", "upr", "lwr") 
+
+head(data_model)
+```
+
+```{r}
+model_field_pred<-ggplot()+ 
+    geom_point(data=data_model, aes(x=Temperature, y=Estimate, colour=Predation), shape="-", size = 20, position = position_dodge(width = 0.85))+
+    geom_errorbar(data=data_model, aes(x=Temperature, ymin=lwr, ymax=upr, colour=Predation),  size = 8, width = 0, alpha = 0.6, position = position_dodge(width = 0.85), show.legend = FALSE)+
+    geom_jitter(data=field_exp, aes(x=Temperature, y= DailyPredation, colour=Treatment), size=1.5, alpha=0.5, position = position_jitterdodge(jitter.width = 0.05, jitter.height = 0.02, dodge.width = 0.95))+
+    theme_classic()+
+    theme(panel.border = element_rect(colour = "black", fill=NA, size=0.7),
+    #legend.position = "right",
+    legend.position = c(0.90, .75),
+     #legend.direction = "vertical",
+     #legend.justification = c("left", "bottom"),
+     #legend.box.just = "left",
+     legend.margin = margin(0, 0, 0, 0),
+     legend.box.spacing = unit(0, "pt"),
+     legend.spacing.y = unit(0.5, "lines"),
+      legend.text = element_text(size = 7.5, family = "Arial"),
+      legend.key.size = unit(0.05, "cm"),
+       ) +     
+  ylab("Predation rate (Barnacles eaten per day)")+
+    xlab("Temperature treatment")+
+  labs(color=NULL)+
+  scale_y_continuous(limits = c(-0.05, 1), breaks=seq(0, 1, 0.2))+
+    annotate("text",
+           x = 0.72,
+           y = 0.17,
+           label = "a",
+           family = "", fontface = 3, size=3)+
+     annotate("text",
+           x = 1,
+           y = 0.55,
+           label = "b",
+           family = "", fontface = 3, size=3)+
+   annotate("text",
+           x = 1.26,
+           y = 0.45,
+           label = "b",
+           family = "", fontface = 3, size=3)+
+   annotate("text",
+           x = 2,
+           y = 0.42,
+           label = "b",
+           family = "", fontface = 3, size=3)+
+  annotate("text",
+           x = 2.26,
+           y = 0.88,
+           label = "b",
+           family = "", fontface = 3, size=3)+
+     annotate("text",
+           x = 2.7,
+           y = 0.10,
+           label = "a",
+           family = "", fontface = 3, size=3)+
+   annotate("text",
+           x = 3,
+           y = 0.35,
+           label = "b",
+           family = "", fontface = 3, size=3)+
+   annotate("text",
+           x = 3.24,
+           y = 0.3,
+           label = "b",
+           family = "", fontface = 3, size=3)+
+   scale_colour_manual(values=colour.palette)
+
+
+model_field_pred
+
+
+#MODEL WITHOUTH PILOT DATA (PILOT DATA DOES NOT HAVE ONE OF THE TREATMENT AND REPLICATION IS VERY LIMITED) 
+
+data_model2<-data_model %>%
+  filter(!Temperature=="24")
+
+field_exp2<-field_exp %>%
+  filter(!Temperature=="24")
+
+model_field_pred2<-ggplot()+ 
+    geom_jitter(data=field_exp2, aes(x=Temperature, y= DailyPredation, colour=Treatment), size=1.5, alpha=0.5, position = position_jitterdodge(jitter.width = 0.01, jitter.height = 0.02, dodge.width = 0.85))+
+  geom_point(data=data_model2, aes(x=Temperature, y=Estimate, colour=Predation), shape="-", size = 20, position = position_dodge(width = 0.85))+
+    geom_errorbar(data=data_model2, aes(x=Temperature, ymin=lwr, ymax=upr, colour=Predation),  size = 8, width = 0, alpha = 0.6, position = position_dodge(width = 0.85), show.legend = FALSE)+
+    theme_classic()+
+    theme(panel.border = element_rect(colour = "black", fill=NA, size=0.7),
+    legend.title=element_blank(),
+    #legend.position = "right",
+    legend.position = c(0.85, .9),
+    legend.direction = "vertical",
+    #legend.justification=c(0,0),
+    #legend.justification = c("left", "bottom"),
+   # legend.box.just = "left",
+  #  legend.margin = margin(0, 0, 0, 0),
+    #legend.box.spacing = unit(0, "pt"),
+    # legend.spacing.y = unit(0, "lines"),
+      legend.text = element_text(size = 9.5, family = "Arial"),
+      legend.key.size = unit(0.1, "cm")
+       ) +
+    guides(color = guide_legend(override.aes = list(size = 5)))+ #this is really important to define size of figure in legend
+  ylab("Predation rate (Barnacles eaten per day)")+
+    xlab("Temperature")+
+   scale_y_continuous(limits = c(-0.05, 0.6), breaks=seq(0, 0.6, 0.1))+
+    annotate("text",
+           x = 0.72,
+           y = 0.15,
+           label = "a",
+           family = "", fontface = 3, size=3)+
+     annotate("text",
+           x = 1,
+           y = 0.50,
+           label = "b",
+           family = "", fontface = 3, size=3)+
+   annotate("text",
+           x = 1.28,
+           y = 0.42,
+           label = "b",
+           family = "", fontface = 3, size=3)+
+  annotate("text",
+           x = 1.72,
+           y = 0.09,
+           label = "a",
+           family = "", fontface = 3, size=3)+
+  annotate("text",
+           x = 2,
+           y = 0.34,
+           label = "b",
+           family = "", fontface = 3, size=3)+
+  annotate("text",
+           x = 2.27,
+           y = 0.29,
+           label = "b",
+           family = "", fontface = 3, size=3)+
+   scale_colour_manual(values=colour.palette)
+
+ model_field_pred2    
+
+ 
+#Figure 4: Effect of temperature on field whelk predation rates  
+png("Figures/Fig4_TempertureFieldPredation.png", width=22, height=15, units="cm", res=300)
+print(model_field_pred2)
+dev.off()
+
+```
+
+#### Running bootstrap Colleen method
+```{r, warning=FALSE, message=FALSE}
+set.seed(16)
+### Setup the bootstrap function and number of iterations
+# This is a bootstrap function that will sample WITH replacement (explained step by step within the function)
+bootFUN <- function(model, newdata) {
+  if(class(model)[1] == "negbin"){
+    nr <- nrow(model[["model"]]) # count number of rows in the model (# of observations)
+    data <- model[["model"]] # pull data from model
+  } else {
+    nr <- nrow(model$data) # count number of rows in the model (# of observations)
+    data <- model$data # pull data from model
+  }
+  data2 <- data.frame(data[sample(1:nr, replace = TRUE), ]) # random sample of numbers from 1 - nr (# of rows) to select data from
+  update <- update(model, data = data2) # rerun the model using the 'new' dataset from the random smapling above
+  predict(update, newdata, type = "response", level = 0.95) # predicts response variable with model and updated data 
+}
+
+bootnum <- 1000 #Number of boostraping 
+
+#The model we will use 
+model_gamma_field<-glm((DailyPredation+0.01)~Treatment:Temperature-1, family=Gamma(link="log"), data=field_exp) # we add 0.01 so we don't have zeros 
+#the data 
+newdata <- data.frame(Treatment = field_exp$Treatment, Temperature=field_exp$Temperature)
+
+boot <- replicate(bootnum, bootFUN(model = model_gamma_field, newdata = newdata)) # run the bootFUN the number (bootnum) of times specified and save as matrix
+
+#to find the estimate mean effect and the lower and upper confident intervals
+field_exp_boot <- cbind(field_exp, as.data.frame(t(apply(boot, 1, function(x) c(quantile(x, c(0.025, 0.5, 0.975)))))))
+
+colnames(field_exp_boot)[9:11] <- c("lowerci", "mean", "upperci") # rename mean/CI columns
+
+str(field_exp_boot)
+```
+
+### Plotting model data from bootstraping
+```{r, warning=FALSE, message=FALSE}
+field_exp_boot<-field_exp_boot %>%
+  filter(!Temperature=="24")
+
+boot_plot <- ggplot() +
+  geom_point(data = field_exp_boot, aes(x = Temperature , y = DailyPredation, colour = Treatment), shape = 1, alpha = 0.4, position = position_jitterdodge(jitter.width = 0.1, jitter.height = 0.05, dodge.width = 0.85)) +
+  geom_linerange(data = field_exp_boot, aes(x = Temperature, ymin = lowerci, ymax = upperci, colour = Treatment), alpha = 0.1, size = 8, position = position_dodge(width = 0.85)) +
+  geom_point(data = field_exp_boot, aes(x = Temperature, y = mean, colour = Treatment), shape = "-", size = 20, position = position_dodge(width = 0.85)) + # plots the mean value 
+  theme_bw() +
+  theme(panel.grid = element_blank(), panel.background=element_blank(), legend.key=element_blank(), strip.background = element_blank())+
+  scale_colour_manual(name = "", values = colour.palette) + # adds the colours for plotting
+  #scale_y_continuous(expand=c(0,0), limits = c(-3, 120)) + # makes the y-axis display as $
+  theme(axis.text.x = element_text(size = 9.5), axis.title.y = element_text(size = 9.5, hjust = 0.6, vjust = 2.5), legend.position =c(0.8, 0.86), legend.text = element_text(size = 8), legend.key.size = unit(0.4, "cm"), legend.key.height = unit(0.4, "cm")) + #Legend theme
+  guides(colour = guide_legend(override.aes = list(shape = 15, size=3))) +
+  ylab("Daily predation(Barnacle eaten per day)") + # y-axis label
+  xlab("") +
+  ggtitle("") +
+    annotate("text",
+           x = 0.72,
+           y = 0.15,
+           label = "a",
+           family = "", fontface = 3, size=3)+
+     annotate("text",
+           x = 1,
+           y = 0.50,
+           label = "b",
+           family = "", fontface = 3, size=3)+
+   annotate("text",
+           x = 1.28,
+           y = 0.42,
+           label = "b",
+           family = "", fontface = 3, size=3)+
+  annotate("text",
+           x = 1.72,
+           y = 0.09,
+           label = "a",
+           family = "", fontface = 3, size=3)+
+  annotate("text",
+           x = 2,
+           y = 0.34,
+           label = "b",
+           family = "", fontface = 3, size=3)+
+  annotate("text",
+           x = 2.27,
+           y = 0.29,
+           label = "b",
+           family = "", fontface = 3, size=3)
+  
+
+boot_plot
+
+#Confidence intervals 
+field_exp_boot_summary<-field_exp_boot%>%
+  group_by(Temperature, Treatment) %>%
+  dplyr::summarize(mean(lowerci), mean(mean), mean(upperci))
+
+
+
+#Figure 4: Effect of temperature feeding rates on the field  
+png("Figures/Fig4_TemperaturePredation_Field_boot.png", width=15, height=12, units="cm", res=300)
+print(boot_plot)
+dev.off()
+```
+In the plot we can observed similar results that from our early plot however interval confidences are a lot smaller 
+
+
+### Modelling lab experimetnal predation using same method 
+
+```{r, message=FALSE, warning=FALSE}
+# lets use lab_exp
+# head(lab_exp)
+# 
+# 
+# bootFUN <- function(model, newdata) {
+#   if(class(model)[1] == "negbin"){
+#     nr <- nrow(model[["model"]]) # count number of rows in the model (# of observations)
+#     data <- model[["model"]] # pull data from model
+#   } else {
+#     nr <- nrow(model$data) # count number of rows in the model (# of observations)
+#     data <- model$data # pull data from model
+#   }
+#   data2 <- data.frame(data[sample(1:nr, replace = TRUE), ]) # random sample of numbers from 1 - nr (# of rows) to select data from
+#   update <- update(model, data = data2) # rerun the model using the 'new' dataset from the random smapling above
+#   predict(update, newdata, type = "response", level = 0.95) # predicts response variable with model and updated data 
+# }
+# 
+# bootnum <- 1000 #Number of boostraping 
+# 
+# #the model
+# model_gamma<-glm((BarnacleEatenPerDay+0.001)~Treatment-1, family=Gamma(link="log"), data=lab_exp) # gamma model cannot consider 0
+# summary(model_gamma)
+# 
+# 
+# model_gamma$data
+# 
+# #the data 
+# newdata <- data.frame(Treatment=lab_exp$Treatment)
+# str(newdata)
+# 
+# 
+# boot <- replicate(bootnum, bootFUN(model = model_gamma, newdata = newdata)) # run the bootFUN the number (bootnum) of times specified and save as matrix
+# 
+# str(lab_exp) 
+# lab_exp$Treatment<-as.factor(lab_exp$Treatment)
+# 
+# #to find the estimate mean effect and the lower and upper confident intervals
+# field_exp_boot <- cbind(field_exp, as.data.frame(t(apply(boot, 1, function(x) c(quantile(x, c(0.025, 0.5, 0.975)))))))
+# 
+# colnames(field_exp_boot)[9:11] <- c("lowerci", "mean", "upperci") # rename mean/CI columns
+```
+
+This system is not working so I am going to do something else
+
+```{r}
+# head(lab_exp)
+# #The model
+# model_gamma<-glm((BarnacleEatenPerDay+0.001)~Treatment-1, family=Gamma(link="log"), data=lab_exp)
+# 
+# 
+# sample_coef_16C<-NULL
+# sample_coef_21C<-NULL
+# sample_coef_26C<-NULL
+# sample_coef_28C<-NULL
+# 
+# sample.data<-lab_exp %>%
+#   select(Treatment, BarnacleEatenPerDay) %>%
+#   filter(Treatment=="16C")
+# 
+# 
+# for(i in 1:2000) {
+# #create a resampled dataset from the sample data
+#    sample_d=sample.data[sample(1:nrow(sample.data), nrow(sample.data), replace=TRUE), ]
+# 
+#   #running the regression on these data 
+#    #example model_bootstrap<-lm(y~x, data=sample_d)
+#    model_gamma<-glm((BarnacleEatenPerDay+0.001)~Treatment-1, family=Gamma(link="log"), data=sample_d)
+#    
+#    #saving the coefficients
+#    sample_coef_16C<-c(sample_coef_16C, model_bootstrap$coefficients[1])
+#    
+# #   sample_coef_21C<-c(sample_coef_21C, model_bootstrap$coefficients[2])
+# #
+#  #  sample_coef_26C<-c(sample_coef_26C, model_bootstrap$coefficients[3])
+# 
+#   # sample_coef_28C<-c(sample_coef_28C, model_bootstrap$coefficients[4])
+# 
+#  }
+#  
+#   boot_coefficient<-rbind(mean(sample_coef_16C), mean(sample_coef_21C), mean(sample_coef_26), mean(sample_coef_28))
+# 
+#  comparation_coef<-cbind(population.model$coefficients, sample.model$coefficients, boot_coefficient)
+#  
+# #comparation of coefficients between population, sample and boot
+# # colnames(comparation_coef)<-c("Population", "Sample", "Boot")
+# # comparation_coef
+# # 
+# # #they are relatevely similar
+# # 
+# # confint_population<-confint(population.model)
+# # confint_sample<-confint(sample.model)
+# # confint_boot<-confint(model_bootstrap)
+# # 
+#cbind(confint_populati
+```
+
+
