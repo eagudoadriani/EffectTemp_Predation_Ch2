@@ -1,0 +1,65 @@
+Time ,Trial,Pizza_Number,Treatment,Temperature,Total_Dead_Barnacles,DailyPredation,NumberDays
+Cold_October_2022,Cold(20C),66,Closed,20,0,0,15
+Cold_October_2022,Cold(20C),68,Closed,20,0,0,15
+Cold_October_2022,Cold(20C),69,Open,20,1,0.066666667,15
+Cold_October_2022,Cold(20C),67,HexaplexInclussion,20,4,0.266666667,15
+Cold_October_2022,Cold(20C),70,Open,20,2,0.133333333,15
+Cold_October_2022,Cold(20C),71,Closed,20,0,0,15
+Cold_October_2022,Cold(20C),72,HexaplexInclussion,20,7,0.466666667,15
+Cold_October_2022,Cold(20C),73,Closed,20,0,0,15
+Cold_October_2022,Cold(20C),74,Closed,20,2,0.133333333,15
+Cold_October_2022,Cold(20C),75,HexaplexInclussion,20,4,0.266666667,15
+Cold_October_2022,Cold(20C),76,Open,20,2,0.133333333,15
+Cold_October_2022,Cold(20C),77,Open,20,6,0.4,15
+Cold_October_2022,Cold(20C),78,Open,20,3,0.2,15
+Cold_October_2022,Cold(20C),83,HexaplexInclussion,20,6,0.4,15
+Cold_October_2022,Cold(20C),84,HexaplexInclussion,20,4,0.266666667,15
+Cold_October_2022,Cold(20C),81,HexaplexInclussion,20,0,0,15
+Cold_October_2022,Cold(20C),86,Open,20,2,0.133333333,15
+Cold_October_2022,Cold(20C),87,Closed,20,0,0,15
+Cold_October_2022,Cold(20C),90,HexaplexInclussion,20,4,0.266666667,15
+Cold_October_2022,Cold(20C),92,HexaplexInclussion,20,2,0.133333333,15
+Cold_October_2022,Cold(20C),93,Open,20,4,0.266666667,15
+Cold_October_2022,Cold(20C),94,Open,20,4,0.266666667,15
+Cold_October_2022,Cold(20C),95,Open,20,3,0.2,15
+Cold_October_2022,Cold(20C),89,Closed,20,1,0.066666667,15
+Cold_October_2022,Cold(20C),98,Closed,20,1,0.066666667,15
+Cold_October_2022,Cold(20C),100,HexaplexInclussion,20,3,0.2,15
+Cold_October_2022,Cold(20C),91,Closed,20,1,0.066666667,15
+Pilot_June_2022,Intermediate (24C),44,HexaplexInclussion,24,4,0.266666667,15
+Pilot_June_2022,Intermediate (24C),95,HexaplexInclussion,24,4,0.266666667,15
+Pilot_June_2022,Intermediate (24C),90,HexaplexInclussion,24,5,0.333333333,15
+Pilot_June_2022,Intermediate (24C),95,HexaplexInclussion,24,2,0.133333333,15
+Pilot_June_2022,Intermediate (24C),89,HexaplexInclussion,24,2,0.133333333,15
+Pilot_June_2022,Intermediate (24C),99,HexaplexInclussion,24,1,0.066666667,15
+Pilot_June_2022,Intermediate (24C),98,HexaplexInclussion,24,2,0.133333333,15
+Pilot_June_2022,Intermediate (24C),40,Open,24,6,0.4,15
+Pilot_June_2022,Intermediate (24C),NoTag,Open,24,4,0.266666667,15
+Pilot_June_2022,Intermediate (24C),NoTag,Open,24,3,0.2,15
+Warm_June_2023,Warm(27C),94,Open,27,4,0.25,16
+Warm_June_2023,Warm(27C),86,Open,27,4,0.25,16
+Warm_June_2023,Warm(27C),93,Open,27,2,0.125,16
+Warm_June_2023,Warm(27C),78,HexaplexInclussion,27,1,0.0625,16
+Warm_June_2023,Warm(27C),69,Open,27,0,0,16
+Warm_June_2023,Warm(27C),70,Open,27,0,0,16
+Warm_June_2023,Warm(27C),77,Open,27,2,0.125,16
+Warm_June_2023,Warm(27C),76,Open,27,0,0,16
+Warm_June_2023,Warm(27C),95,Open,27,0,0,16
+Warm_June_2023,Warm(27C),96,Open,27,2,0.125,16
+Warm_June_2023,Warm(27C),90,HexaplexInclussion,27,4,0.25,16
+Warm_June_2023,Warm(27C),66,HexaplexInclussion,27,3,0.1875,16
+Warm_June_2023,Warm(27C),100,HexaplexInclussion,27,1,0.0625,16
+Warm_June_2023,Warm(27C),74,HexaplexInclussion,27,2,0.125,16
+Warm_June_2023,Warm(27C),75,HexaplexInclussion,27,5,0.3125,16
+Warm_June_2023,Warm(27C),72,Closed,27,0,0,16
+Warm_June_2023,Warm(27C),98,HexaplexInclussion,27,0,0,16
+Warm_June_2023,Warm(27C),80,Closed,27,1,0.0625,16
+Warm_June_2023,Warm(27C),79,Open,27,4,0.25,16
+Warm_June_2023,Warm(27C),68,HexaplexInclussion,27,3,0.1875,16
+Warm_June_2023,Warm(27C),92,Closed,27,0,0,16
+Warm_June_2023,Warm(27C),81,HexaplexInclussion,27,0,0,16
+Warm_June_2023,Warm(27C),42,HexaplexInclussion,27,4,0.25,16
+Warm_June_2023,Warm(27C),50,HexaplexInclussion,27,1,0.0625,16
+Warm_June_2023,Warm(27C),30,Closed,27,0,0,16
+Warm_June_2023,Warm(27C),78A,HexaplexInclussion,27,1,0.0625,16
+Warm_June_2023,Warm(27C),79B,Closed,27,0,0,16
